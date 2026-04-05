@@ -17,8 +17,5 @@ func (s *CheckoutService) validatePurchase(req *PurchaseRequest) error {
 	if req.ReturnURL == "" {
 		return fmt.Errorf("payway/checkout: ReturnURL is required")
 	}
-	if len(req.Items) == 0 {
-		return fmt.Errorf("payway/checkout: at least one Item is required")
-	}
 	return nil
 }
