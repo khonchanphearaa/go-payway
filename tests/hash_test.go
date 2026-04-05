@@ -3,7 +3,7 @@ package encoder_test
 import (
 	"testing"
 
-	"github.com/khonchanpharaa/go-payway/pkg/hash"
+	"github.com/khonchanphearaa/go-payway/pkg/hash"
 )
 
 func TestGenerate_DeterministicOutput(t *testing.T) {
