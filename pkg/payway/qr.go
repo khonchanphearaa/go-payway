@@ -57,10 +57,13 @@ func (s *QRService) Generate(ctx context.Context, req *QRRequest) (*QRResponse, 
 		return nil, err
 	}
 
-	encodedItems, err := encoder.EncodeItems(req.Items)
-	if err != nil {
-		return nil, fmt.Errorf("payway/qr: %w", err)
+	// Items is can optional 
+	if len(req.Items) == 0 {
+		req.Items = []encoder.Item{
+			{Name: "Item", Quantity: 1, Price: req.Amount},
+		}
 	}
+	encodedItems, err := encoder.EncodeItems(req.Items)
 
 	reqTime := NowReqTime()
 
@@ -177,9 +180,6 @@ func (s *QRService) validateQRRequest(req *QRRequest) error {
 	}
 	if req.PaymentOption == "" {
 		return fmt.Errorf("payway/qr: PaymentOption is required")
-	}
-	if len(req.Items) == 0 {
-		return fmt.Errorf("payway/qr: at least one Item is required")
 	}
 	return nil
 }
