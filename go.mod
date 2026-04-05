@@ -1,4 +1,4 @@
-module github.com/khonchanpharaa/go-payway
+module github.com/khonchanphearaa/go-payway
 
 go 1.21
 
