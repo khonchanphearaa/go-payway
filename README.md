@@ -23,7 +23,7 @@ Just a simple, typed API that handles all the complexity for you.
 ## Installation
 
 ```bash
-go get github.com/khonchanpharaa/go-payway
+go get github.com/khonchanphearaa/go-payway
 ```
 
 ---
@@ -33,7 +33,7 @@ go get github.com/khonchanpharaa/go-payway
 ### 1. Create a client
 
 ```go
-import "github.com/khonchanpharaa/go-payway/pkg/payway"
+import "github.com/khonchanphearaa/go-payway/pkg/payway"
 
 client, err := payway.NewClient(payway.Config{
     MerchantID: os.Getenv("PAYWAY_MERCHANT_ID"),
@@ -45,7 +45,7 @@ client, err := payway.NewClient(payway.Config{
 ### 2. Generate a QR Code
 
 ```go
-import "github.com/khonchanpharaa/go-payway/pkg/encoder"
+import "github.com/khonchanphearaa/go-payway/pkg/encoder"
 
 resp, err := client.QR.Generate(ctx, &payway.QRRequest{
     TransactionID: "TXN-20250404-001",
