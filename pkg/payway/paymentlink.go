@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/khonchanpharaa/go-payway/pkg/encoder"
-	"github.com/khonchanpharaa/go-payway/pkg/hash"
+	"github.com/khonchanphearaa/go-payway/pkg/encoder"
+	"github.com/khonchanphearaa/go-payway/pkg/hash"
 )
 
 const (

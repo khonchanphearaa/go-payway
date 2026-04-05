@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/khonchanpharaa/go-payway/pkg/encoder"
-	"github.com/khonchanpharaa/go-payway/pkg/hash"
+	"github.com/khonchanphearaa/go-payway/pkg/encoder"
+	"github.com/khonchanphearaa/go-payway/pkg/hash"
 )
 
 const pathGenerateQR = "/api/payment-gateway/v1/payments/generate-qr"
@@ -20,23 +20,23 @@ type QRService struct {
 
 // QRRequest contains all parameters for generating a PayWay QR code
 type QRRequest struct {
-	TransactionID string
-	Amount float64
-	Currency string
-	PaymentOption string
-	Items []encoder.Item
-	FirstName string
-	LastName  string
-	Email     string
-	Phone     string
-	CallbackURL string
-	ReturnDeeplink string
-	Lifetime int
+	TransactionID   string
+	Amount          float64
+	Currency        string
+	PaymentOption   string
+	Items           []encoder.Item
+	FirstName       string
+	LastName        string
+	Email           string
+	Phone           string
+	CallbackURL     string
+	ReturnDeeplink  string
+	Lifetime        int
 	QRImageTemplate string
-	PurchaseType string
-	CustomFields string
-	ReturnParams string
-	Payout       string
+	PurchaseType    string
+	CustomFields    string
+	ReturnParams    string
+	Payout          string
 }
 
 // QRResponse is the parsed response from the generate-qr endpoint

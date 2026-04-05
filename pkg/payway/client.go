@@ -3,14 +3,14 @@ package payway
 import (
 	"strings"
 
-	"github.com/khonchanpharaa/go-payway/pkg/hash"
+	"github.com/khonchanphearaa/go-payway/pkg/hash"
 )
 
 type Client struct {
-	QR *QRService
-	Checkout *CheckoutService
+	QR          *QRService
+	Checkout    *CheckoutService
 	PaymentLink *PaymentLinkService
-	Callback *CallbackService
+	Callback    *CallbackService
 }
 
 func NewClient(cfg Config) (*Client, error) {

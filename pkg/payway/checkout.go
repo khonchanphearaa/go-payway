@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/khonchanpharaa/go-payway/pkg/encoder"
-	"github.com/khonchanpharaa/go-payway/pkg/hash"
+	"github.com/khonchanphearaa/go-payway/pkg/encoder"
+	"github.com/khonchanphearaa/go-payway/pkg/hash"
 )
 
 const (
@@ -37,10 +37,10 @@ type PurchaseRequest struct {
 	Email     string
 	Phone     string
 
-	ReturnURL string
-	CancelURL string
+	ReturnURL   string
+	CancelURL   string
 	CallbackURL string
-	Type string
+	Type        string
 
 	// Optional fields.
 	Shipping           string
@@ -133,8 +133,7 @@ func (s *CheckoutService) Purchase(ctx context.Context, req *PurchaseRequest) (*
 	}, nil
 }
 
-
-// ExchangeRateResponse 
+// ExchangeRateResponse
 type ExchangeRateResponse struct {
 	Rate   float64   `json:"rate"`
 	Status APIStatus `json:"status"`
@@ -161,8 +160,6 @@ func (s *CheckoutService) GetExchangeRate(ctx context.Context) (*ExchangeRateRes
 
 	return &resp, nil
 }
-
-
 
 // // Validation amount
 // func (s *CheckoutService) validatePurchase(req *PurchaseRequest) error {

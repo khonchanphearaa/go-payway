@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/khonchanpharaa/go-payway/pkg/hash"
+	"github.com/khonchanphearaa/go-payway/pkg/hash"
 )
 
 type CallbackService struct {
