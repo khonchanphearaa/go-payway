@@ -10,12 +10,12 @@ import (
 
 const (
 	pathPurchase           = "/api/payment-gateway/v1/payments/purchase"
-	pathTransactionDetails = "/api/payment-gateway/v1/payments/details"
-	pathCloseTransaction   = "/api/payment-gateway/v1/payments/close-transaction"
-	pathCheckTransaction   = "/api/payment-gateway/v1/payments/check-transaction"
-	pathRefund             = "/api/payment-gateway/v1/payments/refund"
-	pathTransactionList    = "/api/payment-gateway/v1/payments/list"
-	pathExchangeRate       = "/api/payment-gateway/v1/payments/exchange-rate"
+	// pathTransactionDetails = "/api/payment-gateway/v1/payments/details"
+	// pathCloseTransaction   = "/api/payment-gateway/v1/payments/close-transaction"
+	// pathCheckTransaction   = "/api/payment-gateway/v1/payments/check-transaction"
+	// pathRefund             = "/api/payment-gateway/v1/payments/refund"
+	pathTransactionList    = "/api/payment-gateway/v1/payments/transaction-list-2"
+	pathExchangeRate       = "/api/payment-gateway/v1/exchange-rate"
 )
 
 type CheckoutService struct {

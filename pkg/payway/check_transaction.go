@@ -5,6 +5,8 @@ import (
 	"fmt"
 )
 
+const pathCheckTransaction   = "/api/payment-gateway/v1/payments/check-transaction-2"
+
 type CheckTransactionResponse struct {
 	TranID    string    `json:"tran_id"`
 	Status    string    `json:"status"`

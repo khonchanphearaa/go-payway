@@ -1,12 +1,15 @@
 package payway
-import(
+
+import (
 	"context"
-	"fmt"	
+	"fmt"
 )
+
+const pathRefund = "/api/merchant-portal/merchant-access/online-transaction/refund"
 
 type RefundRequest struct {
 	TransactionID string
-	Amount        float64 
+	Amount        float64
 }
 
 // RefundResponse is returned by the refund endpoint

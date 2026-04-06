@@ -5,6 +5,8 @@ import (
 	"fmt"
 )
 
+const pathTransactionDetails = "/api/payment-gateway/v1/payments/transaction-detail"
+
 // TransactionDetailsRequest
 type TransactionDetailsRequest struct {
 	TransactionID string

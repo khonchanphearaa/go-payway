@@ -9,8 +9,8 @@ import (
 )
 
 const (
-	pathCreatePaymentLink     = "/api/payment-gateway/v1/payments/payment-link"
-	pathGetPaymentLinkDetails = "/api/payment-gateway/v1/payments/payment-link-details"
+	pathCreatePaymentLink     = "/api/merchant-portal/merchant-access/payment-link/create"
+	pathGetPaymentLinkDetails = "/api/merchant-portal/merchant-access/payment-link/detail"
 )
 
 // PaymentLinkService handles payment link creation and retrieval.

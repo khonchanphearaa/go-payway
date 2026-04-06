@@ -5,6 +5,8 @@ import(
 	"fmt"
 )
 
+const pathCloseTransaction   = "/api/payment-gateway/v1/payments/close-transaction"
+
 // Close transaction
 type CloseTransactionResponse struct {
 	Status APIStatus `json:"status"`
