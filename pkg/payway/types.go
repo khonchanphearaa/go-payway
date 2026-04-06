@@ -1,7 +1,9 @@
 package payway
 
 import (
+	"encoding/json"
 	"fmt"
+	"strconv"
 	"time"
 )
 
@@ -81,9 +83,36 @@ type APIStatus struct {
 	TraceID string `json:"trace_id"`
 }
 
+// UnmarshalJSON handles both string and numeric code values from the API
+func (s *APIStatus) UnmarshalJSON(data []byte) error {
+	type Alias APIStatus
+	aux := &struct {
+		Code interface{} `json:"code"`
+		*Alias
+	}{
+		Alias: (*Alias)(s),
+	}
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+
+	// Handle code as either string or numeric
+	switch v := aux.Code.(type) {
+	case string:
+		s.Code = v
+	case float64:
+		s.Code = strconv.FormatInt(int64(v), 10)
+	case nil:
+		s.Code = ""
+	default:
+		return fmt.Errorf("invalid type for code: %T", v)
+	}
+	return nil
+}
+
 // IsSuccess returns true when PayWay signals the request succeeded
 func (s APIStatus) IsSuccess() bool {
-	 return s.Code == "0" || s.Code == "00"
+	return s.Code == "0" || s.Code == "00"
 }
 
 // Error is a structured error returned by the SDK.
