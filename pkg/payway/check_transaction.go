@@ -25,7 +25,7 @@ type CheckTransactionResponse struct {
 
 // IsApproved returns true when payment is confirmed
 func (r *CheckTransactionResponse) IsApproved() bool {
-    return r.Data.PaymentStatus == "APPROVED"
+	return r.Data.PaymentStatus == "APPROVED"
 }
 
 func (s *CheckoutService) CheckTransaction(ctx context.Context, tranID string) (*CheckTransactionResponse, error) {
@@ -49,6 +49,14 @@ func (s *CheckoutService) CheckTransaction(ctx context.Context, tranID string) (
 	var resp CheckTransactionResponse
 	if err := s.http.postJSON(ctx, pathCheckTransaction, params, &resp); err != nil {
 		return nil, err
+	}
+
+	if !resp.Status.IsSuccess() {
+		return nil, &Error{
+			Code:    resp.Status.Code,
+			Message: resp.Status.Message,
+			TraceID: resp.Status.TraceID,
+		}
 	}
 
 	return &resp, nil
