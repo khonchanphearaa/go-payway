@@ -20,7 +20,7 @@ const (
 const (
 	PaymentOptionABAPay     = "abapay"
 	PaymentOptionKHQR       = "khqr"
-	PaymentOptionABAPayKHQR = "abapay_khqr" 
+	PaymentOptionABAPayKHQR = "abapay_khqr"
 	PaymentOptionCard       = "cards"
 	PaymentOptionAll        = "abapay_khqr_wechat_alipay"
 )
@@ -31,9 +31,9 @@ const (
 )
 
 const (
-	QRTemplateDefault      = "template1"
-	QRTemplateColor        = "template3_color"
-	QRTemplateDark         = "template3_dark"
+	QRTemplateDefault = "template1"
+	QRTemplateColor   = "template3_color"
+	QRTemplateDark    = "template3_dark"
 )
 
 var baseURLs = map[Environment]string{
@@ -43,8 +43,8 @@ var baseURLs = map[Environment]string{
 
 type Config struct {
 	MerchantID string
-	APIKey string
-	Sandbox bool
+	APIKey     string
+	Sandbox    bool
 
 	// HTTPTimeout overrides the default HTTP client timeout (default: 30s)
 	HTTPTimeout time.Duration
@@ -76,15 +76,14 @@ func (c Config) baseURL() string {
 
 // APIStatus is returned in every PayWay response to indicate success or failure
 type APIStatus struct {
-	Code    string    `json:"code"` 
-    Message string `json:"message"`
-    TraceID string `json:"trace_id"`
-    TranID  string `json:"tran_id"`
+	Code    string `json:"code"`
+	Message string `json:"message"`
+	TraceID string `json:"trace_id"`
 }
 
 // IsSuccess returns true when PayWay signals the request succeeded
 func (s APIStatus) IsSuccess() bool {
-    return s.Code == "00"
+	 return s.Code == "0" || s.Code == "00"
 }
 
 // Error is a structured error returned by the SDK.
