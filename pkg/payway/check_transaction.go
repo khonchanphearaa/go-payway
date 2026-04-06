@@ -34,17 +34,18 @@ func (s *CheckoutService) CheckTransaction(ctx context.Context, tranID string) (
 	}
 
 	reqTime := NowReqTime()
+
+	generatedHash, err := s.hasher.GenerateOrdered(reqTime, s.cfg.MerchantID, tranID)
+	if err != nil {
+		return nil, err
+	}
+
 	params := map[string]string{
 		"req_time":    reqTime,
 		"merchant_id": s.cfg.MerchantID,
 		"tran_id":     tranID,
+		"hash":        generatedHash,
 	}
-
-	generatedHash, err := s.hasher.Generate(params)
-	if err != nil {
-		return nil, err
-	}
-	params["hash"] = generatedHash
 
 	var resp CheckTransactionResponse
 	if err := s.http.postJSON(ctx, pathCheckTransaction, params, &resp); err != nil {
