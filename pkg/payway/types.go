@@ -76,14 +76,15 @@ func (c Config) baseURL() string {
 
 // APIStatus is returned in every PayWay response to indicate success or failure
 type APIStatus struct {
-	Code    string `json:"code"`
-	Message string `json:"message"`
-	TraceID string `json:"trace_id"`
+	Code    string    `json:"code"` 
+    Message string `json:"message"`
+    TraceID string `json:"trace_id"`
+    TranID  string `json:"tran_id"`
 }
 
 // IsSuccess returns true when PayWay signals the request succeeded
 func (s APIStatus) IsSuccess() bool {
-	return s.Code == "0"
+    return s.Code == "00"
 }
 
 // Error is a structured error returned by the SDK.
