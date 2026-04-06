@@ -16,6 +16,9 @@ func (s *CheckoutService) CloseTransaction(ctx context.Context, tranID string) (
 	if tranID == "" {
 		return nil, fmt.Errorf("payway/checkout: tranID is required")
 	}
+	if len(tranID) > 20 {
+		return nil, fmt.Errorf("payway/checkout: tranID must be at most 20 characters")
+	}
 
 	reqTime := NowReqTime()
 	params := map[string]string{
@@ -24,7 +27,7 @@ func (s *CheckoutService) CloseTransaction(ctx context.Context, tranID string) (
 		"tran_id":     tranID,
 	}
 
-	generatedHash, err := s.hasher.Generate(params)
+	generatedHash, err := s.hasher.GenerateOrdered(reqTime, s.cfg.MerchantID, tranID)
 	if err != nil {
 		return nil, err
 	}
@@ -33,6 +36,14 @@ func (s *CheckoutService) CloseTransaction(ctx context.Context, tranID string) (
 	var resp CloseTransactionResponse
 	if err := s.http.postJSON(ctx, pathCloseTransaction, params, &resp); err != nil {
 		return nil, err
+	}
+
+	if !resp.Status.IsSuccess() {
+		return nil, &Error{
+			Code:    resp.Status.Code,
+			Message: resp.Status.Message,
+			TraceID: resp.Status.TraceID,
+		}
 	}
 
 	return &resp, nil

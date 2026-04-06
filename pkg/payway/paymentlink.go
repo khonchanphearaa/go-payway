@@ -23,6 +23,9 @@ type PaymentLinkService struct {
 // CreatePaymentLinkRequest describes a new payment link.
 type CreatePaymentLinkRequest struct {
 	TransactionID string
+	// MerchantAuth is RSA-encrypted payload for doc-compliant payment-link create.
+	// When provided, SDK sends request_time + merchant_id + merchant_auth.
+	MerchantAuth string
 	Amount        float64
 	Currency      string
 	PaymentOption string
@@ -53,38 +56,64 @@ func (s *PaymentLinkService) Create(ctx context.Context, req *CreatePaymentLinkR
 		return nil, err
 	}
 
-	encodedItems, err := encoder.EncodeItems(req.Items)
-	if err != nil {
-		return nil, fmt.Errorf("payway/paymentlink: %w", err)
-	}
-
 	reqTime := NowReqTime()
-	lifetime := req.Lifetime
-	if lifetime == 0 {
-		lifetime = 60
-	}
+	params := map[string]string{}
 
-	params := map[string]string{
-		"req_time":       reqTime,
-		"merchant_id":    s.cfg.MerchantID,
-		"tran_id":        req.TransactionID,
-		"amount":         fmt.Sprintf("%.2f", req.Amount),
-		"currency":       req.Currency,
-		"items":          encodedItems,
-		"payment_option": req.PaymentOption,
-		"first_name":     req.FirstName,
-		"last_name":      req.LastName,
-		"email":          req.Email,
-		"phone":          req.Phone,
-		"callback_url":   encoder.ToBase64(req.CallbackURL),
-		"lifetime":       fmt.Sprintf("%d", lifetime),
-	}
+	if req.MerchantAuth != "" {
+		params["request_time"] = reqTime
+		params["merchant_id"] = s.cfg.MerchantID
+		params["merchant_auth"] = req.MerchantAuth
 
-	generatedHash, err := s.hasher.Generate(params)
-	if err != nil {
-		return nil, err
+		generatedHash, err := s.hasher.GenerateOrdered(reqTime, s.cfg.MerchantID, req.MerchantAuth)
+		if err != nil {
+			return nil, err
+		}
+		params["hash"] = generatedHash
+	} else {
+		encodedItems, err := encoder.EncodeItems(req.Items)
+		if err != nil {
+			return nil, fmt.Errorf("payway/paymentlink: %w", err)
+		}
+
+		lifetime := req.Lifetime
+		if lifetime == 0 {
+			lifetime = 60
+		}
+
+		params["req_time"] = reqTime
+		params["merchant_id"] = s.cfg.MerchantID
+		params["tran_id"] = req.TransactionID
+		params["amount"] = fmt.Sprintf("%.2f", req.Amount)
+		params["currency"] = req.Currency
+		params["items"] = encodedItems
+		params["payment_option"] = req.PaymentOption
+		params["first_name"] = req.FirstName
+		params["last_name"] = req.LastName
+		params["email"] = req.Email
+		params["phone"] = req.Phone
+		params["callback_url"] = encoder.ToBase64(req.CallbackURL)
+		params["lifetime"] = fmt.Sprintf("%d", lifetime)
+
+		generatedHash, err := s.hasher.GenerateOrdered(
+			reqTime,
+			s.cfg.MerchantID,
+			req.TransactionID,
+			fmt.Sprintf("%.2f", req.Amount),
+			req.Currency,
+			encodedItems,
+			req.PaymentOption,
+			req.FirstName,
+			req.LastName,
+			req.Email,
+			req.Phone,
+			encoder.ToBase64(req.CallbackURL),
+			fmt.Sprintf("%d", lifetime),
+		)
+		if err != nil {
+			return nil, err
+		}
+		params["hash"] = generatedHash
 	}
-	params["hash"] = generatedHash
 
 	var resp CreatePaymentLinkResponse
 	if err := s.http.postJSON(ctx, pathCreatePaymentLink, params, &resp); err != nil {
@@ -107,6 +136,9 @@ func (s *PaymentLinkService) GetDetails(ctx context.Context, tranID string) (map
 	if tranID == "" {
 		return nil, fmt.Errorf("payway/paymentlink: tranID is required")
 	}
+	if len(tranID) > 20 {
+		return nil, fmt.Errorf("payway/paymentlink: tranID must be at most 20 characters")
+	}
 
 	reqTime := NowReqTime()
 	params := map[string]string{
@@ -115,7 +147,7 @@ func (s *PaymentLinkService) GetDetails(ctx context.Context, tranID string) (map
 		"tran_id":     tranID,
 	}
 
-	generatedHash, err := s.hasher.Generate(params)
+	generatedHash, err := s.hasher.GenerateOrdered(reqTime, s.cfg.MerchantID, tranID)
 	if err != nil {
 		return nil, err
 	}
@@ -126,12 +158,84 @@ func (s *PaymentLinkService) GetDetails(ctx context.Context, tranID string) (map
 		return nil, err
 	}
 
+	if statusRaw, ok := resp["status"].(map[string]any); ok {
+		status := APIStatus{}
+		if v, ok := statusRaw["code"]; ok {
+			switch c := v.(type) {
+			case string:
+				status.Code = c
+			case float64:
+				status.Code = fmt.Sprintf("%.0f", c)
+			}
+		}
+		if v, ok := statusRaw["message"].(string); ok {
+			status.Message = v
+		}
+		if !status.IsSuccess() {
+			return nil, &Error{Code: status.Code, Message: status.Message}
+		}
+	}
+
+	return resp, nil
+}
+
+// GetDetailsByMerchantAuth retrieves payment-link details using doc-compliant merchant_auth.
+func (s *PaymentLinkService) GetDetailsByMerchantAuth(ctx context.Context, merchantAuth string) (map[string]any, error) {
+	if merchantAuth == "" {
+		return nil, fmt.Errorf("payway/paymentlink: merchantAuth is required")
+	}
+
+	requestTime := NowReqTime()
+	params := map[string]string{
+		"request_time":  requestTime,
+		"merchant_id":   s.cfg.MerchantID,
+		"merchant_auth": merchantAuth,
+	}
+
+	generatedHash, err := s.hasher.GenerateOrdered(requestTime, s.cfg.MerchantID, merchantAuth)
+	if err != nil {
+		return nil, err
+	}
+	params["hash"] = generatedHash
+
+	var resp map[string]any
+	if err := s.http.postJSON(ctx, pathGetPaymentLinkDetails, params, &resp); err != nil {
+		return nil, err
+	}
+
+	if statusRaw, ok := resp["status"].(map[string]any); ok {
+		status := APIStatus{}
+		if v, ok := statusRaw["code"]; ok {
+			switch c := v.(type) {
+			case string:
+				status.Code = c
+			case float64:
+				status.Code = fmt.Sprintf("%.0f", c)
+			}
+		}
+		if v, ok := statusRaw["message"].(string); ok {
+			status.Message = v
+		}
+		if !status.IsSuccess() {
+			return nil, &Error{Code: status.Code, Message: status.Message}
+		}
+	}
+
 	return resp, nil
 }
 
 func (s *PaymentLinkService) validateCreate(req *CreatePaymentLinkRequest) error {
+	if req == nil {
+		return fmt.Errorf("payway/paymentlink: request is required")
+	}
+	if req.MerchantAuth != "" {
+		return nil
+	}
 	if req.TransactionID == "" {
 		return fmt.Errorf("payway/paymentlink: TransactionID is required")
+	}
+	if len(req.TransactionID) > 20 {
+		return fmt.Errorf("payway/paymentlink: TransactionID must be at most 20 characters")
 	}
 	if req.Amount <= 0 {
 		return fmt.Errorf("payway/paymentlink: Amount must be greater than 0")
