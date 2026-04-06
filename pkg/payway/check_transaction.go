@@ -32,6 +32,9 @@ func (s *CheckoutService) CheckTransaction(ctx context.Context, tranID string) (
 	if tranID == "" {
 		return nil, fmt.Errorf("payway/checkout: tranID is required")
 	}
+	if len(tranID) > 20 {
+		return nil, fmt.Errorf("payway/checkout: tranID must be at most 20 characters")
+	}
 
 	reqTime := NowReqTime()
 

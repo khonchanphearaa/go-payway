@@ -162,6 +162,9 @@ func (s *QRService) validateQRRequest(req *QRRequest) error {
 	if req.TransactionID == "" {
 		return fmt.Errorf("payway/qr: TransactionID is required")
 	}
+	if len(req.TransactionID) > 20 {
+		return fmt.Errorf("payway/qr: TransactionID must be at most 20 characters")
+	}
 	if req.Amount <= 0 {
 		return fmt.Errorf("payway/qr: Amount must be greater than 0")
 	}
