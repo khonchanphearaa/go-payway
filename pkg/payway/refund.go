@@ -12,7 +12,7 @@ type RefundRequest struct {
 	Amount        float64
 	// MerchantAuth is RSA-encrypted payload as required by ABA docs.
 	// When provided, the SDK sends request_time + merchant_id + merchant_auth.
-	MerchantAuth  string
+	MerchantAuth string
 }
 
 // RefundResponse is returned by the refund endpoint
@@ -46,6 +46,7 @@ func (s *CheckoutService) Refund(ctx context.Context, req *RefundRequest) (*Refu
 		}
 		params["hash"] = generatedHash
 	} else {
+		params["request_time"] = requestTime
 		params["req_time"] = requestTime
 		params["merchant_id"] = s.cfg.MerchantID
 		params["tran_id"] = req.TransactionID
