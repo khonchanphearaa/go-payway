@@ -25,7 +25,7 @@ type CreatePaymentLinkRequest struct {
 	TransactionID string
 	// MerchantAuth is RSA-encrypted payload for doc-compliant payment-link create.
 	// When provided, SDK sends request_time + merchant_id + merchant_auth.
-	MerchantAuth string
+	MerchantAuth  string
 	Amount        float64
 	Currency      string
 	PaymentOption string
@@ -57,66 +57,20 @@ func (s *PaymentLinkService) Create(ctx context.Context, req *CreatePaymentLinkR
 	}
 
 	reqTime := NowReqTime()
-	params := map[string]string{}
-
-	if req.MerchantAuth != "" {
-		params["request_time"] = reqTime
-		params["merchant_id"] = s.cfg.MerchantID
-		params["merchant_auth"] = req.MerchantAuth
-
-		generatedHash, err := s.hasher.GenerateOrdered(reqTime, s.cfg.MerchantID, req.MerchantAuth)
-		if err != nil {
-			return nil, err
-		}
-		params["hash"] = generatedHash
-	} else {
-		encodedItems, err := encoder.EncodeItems(req.Items)
-		if err != nil {
-			return nil, fmt.Errorf("payway/paymentlink: %w", err)
-		}
-
-		lifetime := req.Lifetime
-		if lifetime == 0 {
-			lifetime = 60
-		}
-
-		params["req_time"] = reqTime
-		params["merchant_id"] = s.cfg.MerchantID
-		params["tran_id"] = req.TransactionID
-		params["amount"] = fmt.Sprintf("%.2f", req.Amount)
-		params["currency"] = req.Currency
-		params["items"] = encodedItems
-		params["payment_option"] = req.PaymentOption
-		params["first_name"] = req.FirstName
-		params["last_name"] = req.LastName
-		params["email"] = req.Email
-		params["phone"] = req.Phone
-		params["callback_url"] = encoder.ToBase64(req.CallbackURL)
-		params["lifetime"] = fmt.Sprintf("%d", lifetime)
-
-		generatedHash, err := s.hasher.GenerateOrdered(
-			reqTime,
-			s.cfg.MerchantID,
-			req.TransactionID,
-			fmt.Sprintf("%.2f", req.Amount),
-			req.Currency,
-			encodedItems,
-			req.PaymentOption,
-			req.FirstName,
-			req.LastName,
-			req.Email,
-			req.Phone,
-			encoder.ToBase64(req.CallbackURL),
-			fmt.Sprintf("%d", lifetime),
-		)
-		if err != nil {
-			return nil, err
-		}
-		params["hash"] = generatedHash
+	params := map[string]string{
+		"request_time":  reqTime,
+		"merchant_id":   s.cfg.MerchantID,
+		"merchant_auth": req.MerchantAuth,
 	}
 
+	generatedHash, err := s.hasher.GenerateOrdered(reqTime, s.cfg.MerchantID, req.MerchantAuth)
+	if err != nil {
+		return nil, err
+	}
+	params["hash"] = generatedHash
+
 	var resp CreatePaymentLinkResponse
-	if err := s.http.postJSON(ctx, pathCreatePaymentLink, params, &resp); err != nil {
+	if err := s.http.postForm(ctx, pathCreatePaymentLink, params, &resp); err != nil {
 		return nil, err
 	}
 
@@ -142,9 +96,9 @@ func (s *PaymentLinkService) GetDetails(ctx context.Context, tranID string) (map
 
 	reqTime := NowReqTime()
 	params := map[string]string{
-		"req_time":    reqTime,
-		"merchant_id": s.cfg.MerchantID,
-		"tran_id":     tranID,
+		"request_time": reqTime,
+		"merchant_id":  s.cfg.MerchantID,
+		"tran_id":      tranID,
 	}
 
 	generatedHash, err := s.hasher.GenerateOrdered(reqTime, s.cfg.MerchantID, tranID)
@@ -228,23 +182,8 @@ func (s *PaymentLinkService) validateCreate(req *CreatePaymentLinkRequest) error
 	if req == nil {
 		return fmt.Errorf("payway/paymentlink: request is required")
 	}
-	if req.MerchantAuth != "" {
-		return nil
-	}
-	if req.TransactionID == "" {
-		return fmt.Errorf("payway/paymentlink: TransactionID is required")
-	}
-	if len(req.TransactionID) > 20 {
-		return fmt.Errorf("payway/paymentlink: TransactionID must be at most 20 characters")
-	}
-	if req.Amount <= 0 {
-		return fmt.Errorf("payway/paymentlink: Amount must be greater than 0")
-	}
-	if req.Currency == "" {
-		return fmt.Errorf("payway/paymentlink: Currency is required")
-	}
-	if len(req.Items) == 0 {
-		return fmt.Errorf("payway/paymentlink: at least one Item is required")
+	if req.MerchantAuth == "" {
+		return fmt.Errorf("payway/paymentlink: MerchantAuth is required by Payment Link API")
 	}
 	return nil
 }
