@@ -26,6 +26,12 @@ Just a simple, typed API that handles all the complexity for you.
 go get github.com/khonchanphearaa/go-payway
 ```
 
+OR upgrade to last versions
+
+```bash
+go get github.com/khonchanphearaa/go-payway@latest
+```
+
 ---
 
 ## Quick Start
@@ -57,7 +63,9 @@ resp, err := client.QR.Generate(ctx, &payway.QRRequest{
     Email:         "phearaa@example.com",
     Phone:         "012345678",
     CallbackURL:   "https://yourshop.com/webhook/payway",
-    Items: []encoder.Item{
+
+    // Can be optinal provide
+    Items: []encoder.Item{      
         {Name: "Coffee", Quantity: 2, Price: 2.50},
     },
 })
