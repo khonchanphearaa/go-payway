@@ -173,6 +173,6 @@ go run ./example/qr/generatekhqr.go
 
 ## Contributing
 
-PRs and issues are welcome! This library is built to help the Cambodian developer community.
+PRs and issues are welcome!
 
 ---
