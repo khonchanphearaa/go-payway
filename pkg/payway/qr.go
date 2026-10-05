@@ -64,6 +64,9 @@ func (s *QRService) Generate(ctx context.Context, req *QRRequest) (*QRResponse, 
 		}
 	}
 	encodedItems, err := encoder.EncodeItems(req.Items)
+	if err != nil {
+		return nil, fmt.Errorf("payway/qr: failed to encode items: %w", err)
+	}
 
 	reqTime := NowReqTime()
 
