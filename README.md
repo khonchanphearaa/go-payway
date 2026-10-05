@@ -143,6 +143,7 @@ payway.PaymentOptionAll          // + WeChat + Alipay (USD only)
 payway.QRTemplateDefault
 payway.QRTemplateColor
 payway.QRTemplateDark
+payway.QRTemplateDigital
 ```
 
 ## Running Tests
