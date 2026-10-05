@@ -36,6 +36,7 @@ const (
 	QRTemplateDefault = "template1"
 	QRTemplateColor   = "template3_color"
 	QRTemplateDark    = "template3_dark"
+	QRTemplateDigital = "template4_color"
 )
 
 var baseURLs = map[Environment]string{
