@@ -5,16 +5,15 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"os"
 
 	"github.com/khonchanphearaa/go-payway/pkg/payway"
 )
 
 func main() {
 	client, err := payway.NewClient(payway.Config{
-		MerchantID: os.Getenv("PAYWAY_MERCHANT_ID"),
-		APIKey:     os.Getenv("PAYWAY_API_KEY"),
-		Sandbox:    true,
+		MerchantID: "eroxisabaypaygoods",
+		APIKey:     "22e9e0cf-d5b4-4a31-82db-bc1046brewefwf",
+		Sandbox: true,
 	})
 	if err != nil {
 		log.Fatalf("failed to create PayWay client: %v", err)
