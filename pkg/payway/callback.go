@@ -29,7 +29,7 @@ type CallbackPayload struct {
 }
 
 func (p *CallbackPayload) IsPaid() bool {
-	return p.Status == "0"
+	return p.Status == "0" || p.Status == "00"
 }
 
 func (s *CallbackService) ParseAndVerify(r *http.Request) (*CallbackPayload, error) {
