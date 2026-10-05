@@ -127,9 +127,20 @@ func (s *CheckoutService) Purchase(ctx context.Context, req *PurchaseRequest) (*
 		return nil, err
 	}
 
+	var raws struct {
+	CheckoutURL string `json:"checkout_url"`
+	Status APIStatus `json:"status"`
+	}
+
+	if err := s.http.postForm(ctx, pathPurchase, fields, &raws); err != nil {
+		return nil, err
+	}
+
 	return &PurchaseResponse{
-		CheckoutURL: s.cfg.baseURL() + pathPurchase,
-		Status:      APIStatus{Code: "0", Message: "Success"},
+		// CheckoutURL: s.cfg.baseURL() + pathPurchase,
+		// Status:      APIStatus{Code: "0", Message: "Success"},
+		CheckoutURL: raws.CheckoutURL,
+		Status: raws.Status,
 	}, nil
 }
 
