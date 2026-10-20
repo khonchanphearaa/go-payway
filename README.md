@@ -57,7 +57,7 @@ resp, err := client.QR.Generate(ctx, &payway.QRRequest{
     TransactionID: "TXN-20250404-001",
     Amount:        5.00,
     Currency:      payway.CurrencyUSD,
-    PaymentOption: payway.PaymentOptionABAPayUSD,
+    PaymentOption: payway.PaymentOptionABAPayKHQR, // the QR API accepts abapay_khqr, wechat or alipay
     FirstName:     "Khon",
     LastName:      "Chanpheara",
     Email:         "phearaa@example.com",
@@ -134,10 +134,16 @@ payway.CurrencyUSD
 payway.CurrencyKHR
 
 // Payment options
-payway.PaymentOptionABAPay       
-payway.PaymentOptionKHQR         
-payway.PaymentOptionABAPayKHQR   
-payway.PaymentOptionAll          // + WeChat + Alipay (USD only)
+payway.PaymentOptionABAPayKHQR   // QR API: ABA KHQR (KHR or USD)
+payway.PaymentOptionWeChat       // QR API: USD only
+payway.PaymentOptionAlipay       // QR API: USD only
+payway.PaymentOptionABAPay       // checkout
+payway.PaymentOptionKHQR         // checkout only; the QR API rejects it (code 04)
+payway.PaymentOptionAll          // checkout: + WeChat + Alipay (USD only)
+
+// Status codes
+payway.CodeInvalidData           // "04": a request field failed validation
+payway.CodeTransactionNotFound   // "6": PayWay has no record of the tran_id
 
 // QR templates
 payway.QRTemplateDefault
@@ -145,6 +151,26 @@ payway.QRTemplateColor
 payway.QRTemplateDark
 payway.QRTemplateDigital
 ```
+
+## Errors
+
+PayWay rejections are returned as `*payway.Error`. Errors include PayWay's
+status code, message and trace ID, never the raw response body.
+
+```go
+var perr *payway.Error
+if errors.As(err, &perr) {
+    switch perr.Code {
+    case payway.CodeInvalidData:         // fix the request fields
+    case payway.CodeTransactionNotFound: // PayWay never created this tran_id
+    }
+    log.Printf("http=%d code=%s trace=%s", perr.HTTPStatus, perr.Code, perr.TraceID)
+}
+```
+
+Pass `Config.HTTPClient` to supply your own `*http.Client` (transport, proxy,
+tests). `Config.HTTPTimeout` still overrides its timeout. Responses larger than
+2 MiB are rejected.
 
 ## Running Tests
 
@@ -157,7 +183,7 @@ go test ./...
 This can testing generate qrcode example
 
 ```bash
-go run ./example/qr/generatekhqr.go
+PAYWAY_MERCHANT_ID=... PAYWAY_API_KEY=... go run ./examples/generate_qr
 ```
 
 ---
