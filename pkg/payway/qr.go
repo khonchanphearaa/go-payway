@@ -57,7 +57,7 @@ func (s *QRService) Generate(ctx context.Context, req *QRRequest) (*QRResponse, 
 		return nil, err
 	}
 
-	// Items is can optional 
+	// Items is can optional
 	if len(req.Items) == 0 {
 		req.Items = []encoder.Item{
 			{Name: "Item", Quantity: 1, Price: req.Amount},
@@ -184,8 +184,19 @@ func (s *QRService) validateQRRequest(req *QRRequest) error {
 			return fmt.Errorf("payway/qr: USD amount must be at least 0.01")
 		}
 	}
-	if req.PaymentOption == "" {
+	switch req.PaymentOption {
+	case PaymentOptionABAPayKHQR:
+	case PaymentOptionWeChat, PaymentOptionAlipay:
+		if !strings.EqualFold(req.Currency, CurrencyUSD) {
+			return fmt.Errorf("payway/qr: PaymentOption %q supports USD only", req.PaymentOption)
+		}
+	case "":
 		return fmt.Errorf("payway/qr: PaymentOption is required")
+	default:
+		return fmt.Errorf("payway/qr: PaymentOption %q is not accepted by the QR API; use PaymentOptionABAPayKHQR, PaymentOptionWeChat or PaymentOptionAlipay", req.PaymentOption)
+	}
+	if req.Lifetime != 0 && req.Lifetime < 3 {
+		return fmt.Errorf("payway/qr: Lifetime must be at least 3 minutes")
 	}
 	return nil
 }
