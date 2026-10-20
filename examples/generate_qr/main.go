@@ -4,16 +4,17 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
 
-	"github.com/khonchanphearaa/go-payway/pkg/encoder" 			// encoder itmes
+	"github.com/khonchanphearaa/go-payway/pkg/encoder" // encoder itmes
 	"github.com/khonchanphearaa/go-payway/pkg/payway"
 )
 
 func main() {
 	client, err := payway.NewClient(payway.Config{
-		MerchantID: "eroxisabaypaygoods",
-		APIKey:     "22e9e0cf-d5b4-4a31-82db-bc1046brewefwf",
-		Sandbox: true,   // false for production
+		MerchantID: os.Getenv("PAYWAY_MERCHANT_ID"),
+		APIKey:     os.Getenv("PAYWAY_API_KEY"),
+		Sandbox:    true, // false for production
 	})
 	if err != nil {
 		log.Fatal(err)
@@ -22,7 +23,7 @@ func main() {
 	resp, err := client.QR.Generate(context.Background(), &payway.QRRequest{
 		TransactionID: "TXN-20250404-001",
 		Amount:        5.00,
-		Currency:      payway.CurrencyUSD,    // Supported KHR, USD
+		Currency:      payway.CurrencyUSD, // Supported KHR, USD
 		PaymentOption: payway.PaymentOptionABAPayKHQR,
 		FirstName:     "Khon",
 		LastName:      "Chanpheara",
@@ -30,7 +31,7 @@ func main() {
 		Phone:         "012345678",
 		CallbackURL:   "https://yourshop.com/webhook/payway",
 		Items: []encoder.Item{
-			{Name: "Coffee", Quantity: 2, Price: 2.50},  // This items can be optional
+			{Name: "Coffee", Quantity: 2, Price: 2.50}, // This items can be optional
 		},
 	})
 	if err != nil {

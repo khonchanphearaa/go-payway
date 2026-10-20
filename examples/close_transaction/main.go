@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
 
 	"github.com/khonchanphearaa/go-payway/pkg/payway"
 )
@@ -11,9 +12,9 @@ import (
 func main() {
 
 	client, err := payway.NewClient(payway.Config{
-		MerchantID: "eroxisabaypaygoods",
-		APIKey:     "22e9e0cf-d5b4-4a31-82db-bc1046brewefwf",
-		Sandbox: true, 
+		MerchantID: os.Getenv("PAYWAY_MERCHANT_ID"),
+		APIKey:     os.Getenv("PAYWAY_API_KEY"),
+		Sandbox:    true,
 	})
 	if err != nil {
 		log.Fatal(err)
