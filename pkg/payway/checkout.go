@@ -9,13 +9,13 @@ import (
 )
 
 const (
-	pathPurchase           = "/api/payment-gateway/v1/payments/purchase"
+	pathPurchase = "/api/payment-gateway/v1/payments/purchase"
 	// pathTransactionDetails = "/api/payment-gateway/v1/payments/details"
 	// pathCloseTransaction   = "/api/payment-gateway/v1/payments/close-transaction"
 	// pathCheckTransaction   = "/api/payment-gateway/v1/payments/check-transaction"
 	// pathRefund             = "/api/payment-gateway/v1/payments/refund"
-	pathTransactionList    = "/api/payment-gateway/v1/payments/transaction-list-2"
-	pathExchangeRate       = "/api/payment-gateway/v1/exchange-rate"
+	pathTransactionList = "/api/payment-gateway/v1/payments/transaction-list-2"
+	pathExchangeRate    = "/api/payment-gateway/v1/exchange-rate"
 )
 
 type CheckoutService struct {
@@ -122,25 +122,26 @@ func (s *CheckoutService) Purchase(ctx context.Context, req *PurchaseRequest) (*
 		return nil, err
 	}
 	fields["hash"] = generatedHash
-	var raw map[string]any
-	if err := s.http.postForm(ctx, pathPurchase, fields, &raw); err != nil {
-		return nil, err
-	}
 
+	// Send exactly once: a second POST would create a second purchase.
 	var raws struct {
-	CheckoutURL string `json:"checkout_url"`
-	Status APIStatus `json:"status"`
+		CheckoutURL string    `json:"checkout_url"`
+		Status      APIStatus `json:"status"`
 	}
-
 	if err := s.http.postForm(ctx, pathPurchase, fields, &raws); err != nil {
 		return nil, err
 	}
+	if !raws.Status.IsSuccess() {
+		return nil, &Error{
+			Code:    raws.Status.Code,
+			Message: raws.Status.Message,
+			TraceID: raws.Status.TraceID,
+		}
+	}
 
 	return &PurchaseResponse{
-		// CheckoutURL: s.cfg.baseURL() + pathPurchase,
-		// Status:      APIStatus{Code: "0", Message: "Success"},
 		CheckoutURL: raws.CheckoutURL,
-		Status: raws.Status,
+		Status:      raws.Status,
 	}, nil
 }
 
