@@ -3,6 +3,7 @@ package payway
 import (
 	"fmt"
 )
+
 // Validation amount
 func (s *CheckoutService) validatePurchase(req *PurchaseRequest) error {
 	if req.TransactionID == "" {

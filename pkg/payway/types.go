@@ -3,6 +3,7 @@ package payway
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"strconv"
 	"time"
 )
@@ -19,12 +20,26 @@ const (
 	CurrencyKHR = "KHR"
 )
 
+// Payment options. The QR API (QR.Generate) accepts only PaymentOptionABAPayKHQR,
+// PaymentOptionWeChat and PaymentOptionAlipay; the others are checkout options.
 const (
-	PaymentOptionABAPay     = "abapay"
+	PaymentOptionABAPay = "abapay"
+	// PaymentOptionKHQR is a checkout option. PayWay's QR API rejects it with
+	// code 04 ("The given data was invalid"); use PaymentOptionABAPayKHQR there.
 	PaymentOptionKHQR       = "khqr"
 	PaymentOptionABAPayKHQR = "abapay_khqr"
+	PaymentOptionWeChat     = "wechat" // QR API, USD only
+	PaymentOptionAlipay     = "alipay" // QR API, USD only
 	PaymentOptionCard       = "cards"
 	PaymentOptionAll        = "abapay_khqr_wechat_alipay"
+)
+
+// Status codes returned by PayWay that callers commonly branch on.
+const (
+	// CodeInvalidData means a request field failed PayWay validation.
+	CodeInvalidData = "04"
+	// CodeTransactionNotFound means PayWay has no record of the tran_id.
+	CodeTransactionNotFound = "6"
 )
 
 const (
@@ -32,10 +47,13 @@ const (
 	PurchaseTypePreAuth  = "pre-auth"
 )
 
+// QR image templates. PayWay documents template3_color as its example value;
+// render qrString yourself if you don't need PayWay's image.
 const (
 	QRTemplateDefault = "template1"
 	QRTemplateColor   = "template3_color"
 	QRTemplateDark    = "template3_dark"
+	// QRTemplateDigital is not listed in PayWay's public QR API document.
 	QRTemplateDigital = "template4_color"
 )
 
@@ -49,8 +67,13 @@ type Config struct {
 	APIKey     string
 	Sandbox    bool
 
-	// HTTPTimeout overrides the default HTTP client timeout (default: 30s)
+	// HTTPTimeout overrides the HTTP client timeout (default: 30s, or the
+	// HTTPClient's own timeout when one is set).
 	HTTPTimeout time.Duration
+
+	// HTTPClient is an optional client for transport, proxy or test settings.
+	// The SDK copies it; nil uses a default client.
+	HTTPClient *http.Client
 }
 
 // Validate checks that the required config fields are present.
@@ -117,13 +140,19 @@ func (s APIStatus) IsSuccess() bool {
 }
 
 // Error is a structured error returned by the SDK.
+// Use errors.As to inspect it, for example Code == CodeTransactionNotFound.
 type Error struct {
-	Code    string
-	Message string
-	TraceID string
+	// HTTPStatus is set when PayWay answered with a non-2xx HTTP status.
+	HTTPStatus int
+	Code       string
+	Message    string
+	TraceID    string
 }
 
 func (e *Error) Error() string {
+	if e.HTTPStatus != 0 {
+		return fmt.Sprintf("payway error [http %d, code %s]: %s (trace: %s)", e.HTTPStatus, e.Code, e.Message, e.TraceID)
+	}
 	return fmt.Sprintf("payway error [%s]: %s (trace: %s)", e.Code, e.Message, e.TraceID)
 }
 
