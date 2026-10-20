@@ -14,6 +14,9 @@ import (
 
 const defaultTimeout = 30 * time.Second
 
+// maxResponseBytes bounds how much of a PayWay response the SDK will read.
+const maxResponseBytes = 2 << 20
+
 // httpClient is an internal HTTP wrapper used by all service types.
 type httpClient struct {
 	base   string
@@ -21,13 +24,19 @@ type httpClient struct {
 }
 
 func newHTTPClient(cfg Config) *httpClient {
-	timeout := cfg.HTTPTimeout
-	if timeout == 0 {
-		timeout = defaultTimeout
+	c := &http.Client{}
+	if cfg.HTTPClient != nil {
+		copied := *cfg.HTTPClient
+		c = &copied
+	}
+	if cfg.HTTPTimeout > 0 {
+		c.Timeout = cfg.HTTPTimeout
+	} else if c.Timeout == 0 {
+		c.Timeout = defaultTimeout
 	}
 	return &httpClient{
 		base:   cfg.baseURL(),
-		client: &http.Client{Timeout: timeout},
+		client: c,
 	}
 }
 
@@ -71,7 +80,8 @@ func (h *httpClient) postForm(ctx context.Context, path string, fields map[strin
 	return h.do(req, dest)
 }
 
-// do executes the request and handles common errors.
+// do executes the request and handles common errors. Errors never include the
+// raw response body; only PayWay's status code, message and trace ID.
 func (h *httpClient) do(req *http.Request, dest any) error {
 	resp, err := h.client.Do(req)
 	if err != nil {
@@ -79,27 +89,38 @@ func (h *httpClient) do(req *http.Request, dest any) error {
 	}
 	defer resp.Body.Close()
 
-	raw, err := io.ReadAll(resp.Body)
+	raw, err := io.ReadAll(io.LimitReader(resp.Body, maxResponseBytes+1))
 	if err != nil {
 		return fmt.Errorf("payway: failed to read response: %w", err)
 	}
+	if len(raw) > maxResponseBytes {
+		return fmt.Errorf("payway: response exceeds %d bytes", maxResponseBytes)
+	}
 
 	// PayWay occasionally returns HTML on hard errors (e.g. 405, wrong domain)
-	if resp.Header.Get("Content-Type") != "" &&
-		strings.Contains(resp.Header.Get("Content-Type"), "text/html") {
+	if strings.Contains(resp.Header.Get("Content-Type"), "text/html") {
 		return fmt.Errorf("payway: unexpected HTML response (status %d) — check your domain whitelist or request method", resp.StatusCode)
 	}
 
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		// Error bodies usually carry the status envelope with PayWay's reason.
+		var envelope struct {
+			Status APIStatus `json:"status"`
+		}
+		if json.Unmarshal(raw, &envelope) == nil && (envelope.Status.Code != "" || envelope.Status.Message != "") {
+			return &Error{
+				HTTPStatus: resp.StatusCode,
+				Code:       envelope.Status.Code,
+				Message:    envelope.Status.Message,
+				TraceID:    envelope.Status.TraceID,
+			}
+		}
+		return &Error{HTTPStatus: resp.StatusCode, Message: http.StatusText(resp.StatusCode)}
+	}
+
 	if err := json.Unmarshal(raw, dest); err != nil {
-		return fmt.Errorf("payway: failed to decode response: %w (body: %s)", err, truncate(string(raw), 200))
+		return fmt.Errorf("payway: failed to decode response (status %d): %w", resp.StatusCode, err)
 	}
 
 	return nil
-}
-
-func truncate(s string, n int) string {
-	if len(s) <= n {
-		return s
-	}
-	return s[:n] + "..."
 }
