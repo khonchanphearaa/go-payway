@@ -1,11 +1,11 @@
 package payway
 
-import(
+import (
 	"context"
 	"fmt"
 )
 
-const pathCloseTransaction   = "/api/payment-gateway/v1/payments/close-transaction"
+const pathCloseTransaction = "/api/payment-gateway/v1/payments/close-transaction"
 
 // Close transaction
 type CloseTransactionResponse struct {
