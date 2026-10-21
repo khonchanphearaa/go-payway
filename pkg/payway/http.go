@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-const defaultTimeout = 30 * time.Second
+const defaultTimeout = 10 * time.Second
 
 // maxResponseBytes bounds how much of a PayWay response the SDK will read.
 const maxResponseBytes = 2 << 20
@@ -33,6 +33,11 @@ func newHTTPClient(cfg Config) *httpClient {
 		c.Timeout = cfg.HTTPTimeout
 	} else if c.Timeout == 0 {
 		c.Timeout = defaultTimeout
+	}
+	// Following a 307/308 would resend the signed request body to another
+	// host. Refuse redirects unless the caller configured its own policy.
+	if c.CheckRedirect == nil {
+		c.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
 	}
 	return &httpClient{
 		base:   cfg.baseURL(),
@@ -108,14 +113,11 @@ func (h *httpClient) do(req *http.Request, dest any) error {
 			Status APIStatus `json:"status"`
 		}
 		if json.Unmarshal(raw, &envelope) == nil && (envelope.Status.Code != "" || envelope.Status.Message != "") {
-			return &Error{
-				HTTPStatus: resp.StatusCode,
-				Code:       envelope.Status.Code,
-				Message:    envelope.Status.Message,
-				TraceID:    envelope.Status.TraceID,
-			}
+			e := statusError(req.URL.Path, envelope.Status)
+			e.HTTPStatus = resp.StatusCode
+			return e
 		}
-		return &Error{HTTPStatus: resp.StatusCode, Message: http.StatusText(resp.StatusCode)}
+		return &Error{HTTPStatus: resp.StatusCode, Message: http.StatusText(resp.StatusCode), path: req.URL.Path}
 	}
 
 	if err := json.Unmarshal(raw, dest); err != nil {

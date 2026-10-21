@@ -2,49 +2,25 @@ package payway
 
 import (
 	"context"
-	"fmt"
 )
 
 const pathCloseTransaction = "/api/payment-gateway/v1/payments/close-transaction"
 
-// Close transaction
+// CloseTransactionResponse is close-transaction's reply; Status.TranID is the
+// closed transaction.
 type CloseTransactionResponse struct {
 	Status APIStatus `json:"status"`
 }
 
+func (r *CloseTransactionResponse) apiStatus() APIStatus { return r.Status }
+
+// CloseTransaction cancels a transaction before it is paid. PayWay sends no
+// callback afterwards. An unknown tranID returns an error matching
+// ErrTransactionNotFound (close uses status code 5, not 6).
 func (s *CheckoutService) CloseTransaction(ctx context.Context, tranID string) (*CloseTransactionResponse, error) {
-	if tranID == "" {
-		return nil, fmt.Errorf("payway/checkout: tranID is required")
-	}
-	if len(tranID) > 20 {
-		return nil, fmt.Errorf("payway/checkout: tranID must be at most 20 characters")
-	}
-
-	reqTime := NowReqTime()
-	params := map[string]string{
-		"req_time":    reqTime,
-		"merchant_id": s.cfg.MerchantID,
-		"tran_id":     tranID,
-	}
-
-	generatedHash, err := s.hasher.GenerateOrdered(reqTime, s.cfg.MerchantID, tranID)
-	if err != nil {
-		return nil, err
-	}
-	params["hash"] = generatedHash
-
 	var resp CloseTransactionResponse
-	if err := s.http.postJSON(ctx, pathCloseTransaction, params, &resp); err != nil {
+	if err := s.postTransaction(ctx, pathCloseTransaction, tranID, &resp); err != nil {
 		return nil, err
 	}
-
-	if !resp.Status.IsSuccess() {
-		return nil, &Error{
-			Code:    resp.Status.Code,
-			Message: resp.Status.Message,
-			TraceID: resp.Status.TraceID,
-		}
-	}
-
 	return &resp, nil
 }

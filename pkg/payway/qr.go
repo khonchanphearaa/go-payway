@@ -151,11 +151,7 @@ func (s *QRService) Generate(ctx context.Context, req *QRRequest) (*QRResponse, 
 	}
 
 	if !resp.Status.IsSuccess() {
-		return nil, &Error{
-			Code:    resp.Status.Code,
-			Message: resp.Status.Message,
-			TraceID: resp.Status.TraceID,
-		}
+		return nil, statusError(pathGenerateQR, resp.Status)
 	}
 
 	return &resp, nil

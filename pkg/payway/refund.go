@@ -71,11 +71,7 @@ func (s *CheckoutService) Refund(ctx context.Context, req *RefundRequest) (*Refu
 	}
 
 	if !resp.Status.IsSuccess() {
-		return nil, &Error{
-			Code:    resp.Status.Code,
-			Message: resp.Status.Message,
-			TraceID: resp.Status.TraceID,
-		}
+		return nil, statusError(pathRefund, resp.Status)
 	}
 
 	return &resp, nil

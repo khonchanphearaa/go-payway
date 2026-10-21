@@ -38,7 +38,9 @@ const (
 const (
 	// CodeInvalidData means a request field failed PayWay validation.
 	CodeInvalidData = "04"
-	// CodeTransactionNotFound means PayWay has no record of the tran_id.
+	// CodeTransactionNotFound is check-transaction's and transaction-detail's
+	// "not found" code. Close-transaction uses 5; prefer
+	// errors.Is(err, ErrTransactionNotFound), which knows each endpoint.
 	CodeTransactionNotFound = "6"
 )
 
@@ -67,12 +69,13 @@ type Config struct {
 	APIKey     string
 	Sandbox    bool
 
-	// HTTPTimeout overrides the HTTP client timeout (default: 30s, or the
+	// HTTPTimeout overrides the HTTP client timeout (default: 10s, or the
 	// HTTPClient's own timeout when one is set).
 	HTTPTimeout time.Duration
 
 	// HTTPClient is an optional client for transport, proxy or test settings.
-	// The SDK copies it; nil uses a default client.
+	// The SDK copies it; nil uses a default client. Redirects are refused
+	// unless the client sets its own CheckRedirect.
 	HTTPClient *http.Client
 }
 
@@ -105,6 +108,11 @@ type APIStatus struct {
 	Code    string `json:"code"`
 	Message string `json:"message"`
 	TraceID string `json:"trace_id"`
+	// TranID is endpoint-specific. Check-transaction and transaction-detail
+	// document it as a gateway request reference, not the merchant tran_id;
+	// close-transaction returns the closed tran_id. Never use it as proof of
+	// which transaction a response describes.
+	TranID string `json:"tran_id"`
 }
 
 // UnmarshalJSON handles both string and numeric code values from the API
@@ -137,23 +145,6 @@ func (s *APIStatus) UnmarshalJSON(data []byte) error {
 // IsSuccess returns true when PayWay signals the request succeeded
 func (s APIStatus) IsSuccess() bool {
 	return s.Code == "0" || s.Code == "00"
-}
-
-// Error is a structured error returned by the SDK.
-// Use errors.As to inspect it, for example Code == CodeTransactionNotFound.
-type Error struct {
-	// HTTPStatus is set when PayWay answered with a non-2xx HTTP status.
-	HTTPStatus int
-	Code       string
-	Message    string
-	TraceID    string
-}
-
-func (e *Error) Error() string {
-	if e.HTTPStatus != 0 {
-		return fmt.Sprintf("payway error [http %d, code %s]: %s (trace: %s)", e.HTTPStatus, e.Code, e.Message, e.TraceID)
-	}
-	return fmt.Sprintf("payway error [%s]: %s (trace: %s)", e.Code, e.Message, e.TraceID)
 }
 
 // ReqTime formats YYYYMMDDHHmmss.

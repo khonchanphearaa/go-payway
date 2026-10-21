@@ -12,7 +12,11 @@ Just a simple, typed API that handles all the complexity for you.
 - QR code generation (ABA PAY + KHQR)
 - Ecommerce checkout (purchase, check, close, refund)
 - Payment link creation
-- Callback verification (HMAC-SHA512)
+- Payment confirmation: `VerifyApproval` cross-checks check-transaction and transaction-detail
+- Callback verification (`X-PayWay-HMAC-SHA512`, constant-time)
+- Exact amounts (`payway.Amount`), never rounded floats
+- Typed errors per endpoint (`errors.Is(err, payway.ErrTransactionNotFound)`)
+- Safe HTTP defaults: no redirects, 10s timeout, bounded responses
 - Automatic hash generation for every request
 - Automatic Base64 encoding for items, URLs
 - Sandbox + Production support
@@ -71,23 +75,43 @@ resp, err := client.QR.Generate(ctx, &payway.QRRequest{
 })
 ```
 
-### 3. Verify a Callback
+### 3. Handle the callback, then confirm the payment
+
+A callback tells you to check a transaction; it is **not** proof of payment.
+Verify its signature, acknowledge it, then confirm with `VerifyApproval`
+before you fulfil the order.
 
 ```go
 http.HandleFunc("/webhook/payway", func(w http.ResponseWriter, r *http.Request) {
-    payload, err := client.Callback.ParseAndVerify(r)
+    n, err := client.Callback.VerifyRequest(r) // reads X-PayWay-HMAC-SHA512, max 8 KiB
     if err != nil {
-        http.Error(w, "invalid callback", http.StatusBadRequest)
+        http.Error(w, "invalid callback", http.StatusUnauthorized)
         return
     }
-    if payload.IsPaid() {
-        fmt.Printf("Paid: TranID=%s Amount=%.2f %s\n",
-            payload.TranID, payload.Amount, payload.Currency)
-    }
-
+    // Store the event idempotently, then acknowledge quickly.
     w.WriteHeader(http.StatusOK)
+    go confirm(n.TranID) // in production: a durable worker with retries
 })
+
+func confirm(tranID string) {
+    v, err := client.Checkout.VerifyApproval(ctx, tranID)
+    if err != nil {
+        return // retry later; errors.Is(err, payway.ErrRateLimited) etc.
+    }
+    if v.Approved && v.OriginalAmount.Equal(order.Amount) && v.OriginalCurrency == order.Currency {
+        // fulfil the order exactly once
+    }
+}
 ```
+
+`VerifyApproval` polls check-transaction and, only for an approval, confirms it
+with transaction-detail (limited by PayWay to 10 requests per minute). Both must
+agree on status and exact amount, and details must name your `tran_id` and its
+original currency, otherwise the error wraps `ErrInconsistentTransaction`.
+Status code 0 alone also covers `PRE-AUTH`, so it is not treated as paid.
+
+If your merchant profile sends callbacks without a signature, use
+`client.Callback.ParseUnverified(body)` only to learn which `tran_id` to confirm.
 
 ---
 
@@ -104,8 +128,9 @@ http.HandleFunc("/webhook/payway", func(w http.ResponseWriter, r *http.Request) 
 | Method | Description |
 |---|---|
 | `Purchase(ctx, *PurchaseRequest)` | Initiate a hosted checkout session |
-| `GetDetails(ctx, *TransactionDetailsRequest)` | Get full transaction details |
-| `CheckTransaction(ctx, tranID)` | Lightweight payment status poll |
+| `GetDetails(ctx, *TransactionDetailsRequest)` | Get full transaction details (10 requests/minute) |
+| `VerifyApproval(ctx, tranID)` | Decide whether a payment completed (check + details) |
+| `CheckTransaction(ctx, tranID)` | Lightweight payment status poll (last 7 days) |
 | `CloseTransaction(ctx, tranID)` | Cancel an active transaction |
 | `Refund(ctx, *RefundRequest)` | Refund a completed transaction |
 | `GetExchangeRate(ctx)` | Get current USD/KHR rate |
@@ -121,8 +146,10 @@ http.HandleFunc("/webhook/payway", func(w http.ResponseWriter, r *http.Request) 
 
 | Method | Description |
 |---|---|
-| `ParseAndVerify(r *http.Request)` | Parse + verify a callback HTTP request |
-| `Verify(*CallbackPayload)` | Verify a pre-parsed payload |
+| `VerifyRequest(r *http.Request)` | Read and verify a callback request |
+| `VerifyBody(body, signature)` | Verify a raw body against its signature |
+| `ParseUnverified(body)` | Parse an unsigned callback (never payment evidence) |
+| `ParseAndVerify`, `Verify` | Deprecated: legacy payload shape |
 
 ---
 
@@ -145,6 +172,10 @@ payway.PaymentOptionAll          // checkout: + WeChat + Alipay (USD only)
 payway.CodeInvalidData           // "04": a request field failed validation
 payway.CodeTransactionNotFound   // "6": PayWay has no record of the tran_id
 
+// Payment statuses (Transaction.PaymentStatus)
+payway.StatusApproved, payway.StatusPreAuth, payway.StatusPending
+payway.StatusDeclined, payway.StatusRefunded, payway.StatusCancelled
+
 // QR templates
 payway.QRTemplateDefault
 payway.QRTemplateColor
@@ -154,23 +185,39 @@ payway.QRTemplateDigital
 
 ## Errors
 
-PayWay rejections are returned as `*payway.Error`. Errors include PayWay's
-status code, message and trace ID, never the raw response body.
+PayWay rejections are returned as `*payway.Error` with PayWay's status code,
+message and trace ID, never the raw response body. PayWay reuses codes with
+different meanings per endpoint (code 6 is "not found" for check-transaction
+but "domain not whitelisted" for generate-qr), so match sentinels with
+`errors.Is` rather than comparing `Code`:
 
 ```go
+switch {
+case errors.Is(err, payway.ErrTransactionNotFound):     // check 6, details 6, close 5
+case errors.Is(err, payway.ErrRateLimited):             // code or HTTP 429: retry later
+case errors.Is(err, payway.ErrInvalidHash):             // wrong API key or merchant ID
+case errors.Is(err, payway.ErrNotWhitelisted):          // register your domain with PayWay
+case errors.Is(err, payway.ErrDuplicateTransaction):    // tran_id already used
+case errors.Is(err, payway.ErrInconsistentTransaction): // do not fulfil; investigate
+}
 var perr *payway.Error
 if errors.As(err, &perr) {
-    switch perr.Code {
-    case payway.CodeInvalidData:         // fix the request fields
-    case payway.CodeTransactionNotFound: // PayWay never created this tran_id
-    }
     log.Printf("http=%d code=%s trace=%s", perr.HTTPStatus, perr.Code, perr.TraceID)
 }
 ```
 
 Pass `Config.HTTPClient` to supply your own `*http.Client` (transport, proxy,
-tests). `Config.HTTPTimeout` still overrides its timeout. Responses larger than
-2 MiB are rejected.
+tests); the SDK copies it. `Config.HTTPTimeout` overrides its timeout (default
+10s). Redirects are refused unless your client sets its own `CheckRedirect`,
+because following one would resend the signed request to another host.
+Responses larger than 2 MiB are rejected.
+
+## Exact amounts
+
+`payway.Amount` keeps the decimal text PayWay sent. Compare it with
+`Equal` ("2000" equals "2000.00") or convert with `Rat`; never parse it as a
+float. Check and details responses expose it under `.Transaction`; the older
+float fields in `.Data` remain for compatibility and are deprecated.
 
 ## Running Tests
 

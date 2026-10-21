@@ -132,11 +132,7 @@ func (s *CheckoutService) Purchase(ctx context.Context, req *PurchaseRequest) (*
 		return nil, err
 	}
 	if !raws.Status.IsSuccess() {
-		return nil, &Error{
-			Code:    raws.Status.Code,
-			Message: raws.Status.Message,
-			TraceID: raws.Status.TraceID,
-		}
+		return nil, statusError(pathPurchase, raws.Status)
 	}
 
 	return &PurchaseResponse{

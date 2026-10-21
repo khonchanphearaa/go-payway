@@ -75,11 +75,7 @@ func (s *PaymentLinkService) Create(ctx context.Context, req *CreatePaymentLinkR
 	}
 
 	if !resp.Status.IsSuccess() {
-		return nil, &Error{
-			Code:    resp.Status.Code,
-			Message: resp.Status.Message,
-			TraceID: resp.Status.TraceID,
-		}
+		return nil, statusError(pathCreatePaymentLink, resp.Status)
 	}
 
 	return &resp, nil
@@ -126,7 +122,7 @@ func (s *PaymentLinkService) GetDetails(ctx context.Context, tranID string) (map
 			status.Message = v
 		}
 		if !status.IsSuccess() {
-			return nil, &Error{Code: status.Code, Message: status.Message}
+			return nil, statusError(pathGetPaymentLinkDetails, status)
 		}
 	}
 
@@ -171,7 +167,7 @@ func (s *PaymentLinkService) GetDetailsByMerchantAuth(ctx context.Context, merch
 			status.Message = v
 		}
 		if !status.IsSuccess() {
-			return nil, &Error{Code: status.Code, Message: status.Message}
+			return nil, statusError(pathGetPaymentLinkDetails, status)
 		}
 	}
 
