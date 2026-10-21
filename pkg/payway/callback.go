@@ -12,6 +12,11 @@ type CallbackService struct {
 	hasher *hash.Generator
 }
 
+// CallbackPayload is the legacy callback shape.
+//
+// Deprecated: PayWay signs callbacks in the X-PayWay-HMAC-SHA512 header over
+// every body field, sends status as a number or string, and sends amounts as
+// original_amount. Use VerifyRequest or VerifyBody, which return a Notification.
 type CallbackPayload struct {
 	TranID        string  `json:"tran_id"`
 	Status        string  `json:"status"` // "0" = success
@@ -32,6 +37,9 @@ func (p *CallbackPayload) IsPaid() bool {
 	return p.Status == "0" || p.Status == "00"
 }
 
+// ParseAndVerify reads and verifies a legacy callback.
+//
+// Deprecated: use VerifyRequest.
 func (s *CallbackService) ParseAndVerify(r *http.Request) (*CallbackPayload, error) {
 	var payload CallbackPayload
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
@@ -45,6 +53,9 @@ func (s *CallbackService) ParseAndVerify(r *http.Request) (*CallbackPayload, err
 	return &payload, nil
 }
 
+// Verify checks a legacy payload's body hash.
+//
+// Deprecated: use VerifyBody.
 func (s *CallbackService) Verify(payload *CallbackPayload) error {
 	params := map[string]string{
 		"tran_id":        payload.TranID,
