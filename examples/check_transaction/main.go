@@ -23,7 +23,9 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Printf("Status: %s\n", resp.Data.PaymentStatus)
-	fmt.Printf("Transaction Date: %s\n", resp.Data.TransactionDate)
+	t := resp.Transaction // exact amounts; resp.Data keeps the deprecated floats
+	fmt.Printf("Status: %s (approved: %v)\n", t.PaymentStatus, t.Approved())
+	fmt.Printf("Original amount: %s\n", t.OriginalAmount)
+	fmt.Printf("Transaction Date: %s\n", t.TransactionDate)
 	//...
 }
